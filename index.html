@@ -1,30 +1,575 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="PCFK Instrument Health Dashboard - Equipment Status Monitoring for PETRONAS Chemicals Fertiliser Kedah" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <title>PCFK Instrument Health Dashboard</title>
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PCFK Instrument Health Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #ffffff; min-height: 100vh; color: #1f2937; padding: 24px; }
+    .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 24px; }
+    .card:hover { border-color: #00B1A9; }
+    .stat-card { position: relative; overflow: hidden; padding: 24px; }
+    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .stat-healthy::before { background: #00B1A9; }
+    .stat-caution::before { background: #FDB924; }
+    .stat-warning::before { background: #E31837; }
+    .stat-total::before { background: #20419A; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-label { color: #6b7280; font-size: 13px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 36px; font-weight: 700; }
+    select, button { background: #ffffff; border: 1px solid #e5e7eb; color: #1f2937; border-radius: 8px; padding: 10px 16px; font-size: 14px; cursor: pointer; }
+    select:hover, button:hover { border-color: #00B1A9; background: #f9fafb; }
+    .filters { display: flex; gap: 12px; flex-wrap: wrap; padding: 20px; }
+    .tabs { border-bottom: 1px solid #e5e7eb; padding: 0 20px; display: flex; gap: 0; }
+    .tab-btn { padding: 12px 20px; border: none; background: transparent; color: #6b7280; font-weight: 500; cursor: pointer; position: relative; }
+    .tab-btn:hover { color: #00B1A9; }
+    .tab-btn.active { color: #00B1A9; }
+    .tab-btn.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: #00B1A9; }
+    .tab-content { padding: 24px; }
+    .health-ring-container { display: flex; justify-content: center; align-items: center; flex-direction: column; }
+    .health-ring { width: 280px; height: 280px; position: relative; }
+    .health-ring svg { transform: rotate(-90deg); }
+    .health-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+    .health-percent { font-size: 48px; font-weight: 700; color: #00B1A9; }
+    .health-label { font-size: 14px; color: #6b7280; }
+    .legend { display: flex; gap: 32px; margin-top: 24px; justify-content: center; }
+    .legend-item { text-align: center; }
+    .legend-color { width: 14px; height: 14px; border-radius: 4px; margin: 0 auto 6px; }
+    .legend-name { font-size: 13px; color: #6b7280; }
+    .legend-value { font-size: 20px; font-weight: 600; }
+    .area-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; }
+    .area-card { padding: 20px; }
+    .area-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .area-name { font-size: 16px; font-weight: 600; }
+    .area-health { background: rgba(0, 177, 169, 0.15); color: #00B1A9; padding: 4px 10px; border-radius: 12px; font-size: 13px; }
+    .area-stats { display: flex; gap: 16px; margin-bottom: 16px; }
+    .area-stat { flex: 1; text-align: center; padding: 12px; border-radius: 8px; }
+    .area-stat-healthy { background: rgba(0, 177, 169, 0.1); }
+    .area-stat-caution { background: rgba(253, 185, 36, 0.1); }
+    .area-stat-warning { background: rgba(227, 24, 55, 0.1); }
+    .area-stat-value { font-size: 24px; font-weight: 700; }
+    .area-stat-label { font-size: 11px; color: #6b7280; margin-top: 2px; }
+    .progress-bar { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; display: flex; }
+    .alert-group { margin-bottom: 24px; }
+    .alert-header { background: #00B1A9; color: #ffffff; padding: 10px 16px; border-radius: 8px 8px 0 0; font-weight: 600; font-size: 14px; display: flex; justify-content: space-between; }
+    .alert-count { background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 12px; font-size: 12px; }
+    .alert-items { border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; }
+    .alert-row { padding: 12px 16px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; gap: 16px; }
+    .alert-row:last-child { border-bottom: none; border-radius: 0 0 8px 8px; }
+    .alert-row.warning { border-left: 3px solid #E31837; }
+    .alert-row.caution { border-left: 3px solid #FDB924; }
+    .badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; display: inline-block; }
+    .badge-warning { background: rgba(227, 24, 55, 0.15); color: #E31837; }
+    .badge-caution { background: rgba(253, 185, 36, 0.15); color: #FDB924; }
+    .badge-c1 { background: rgba(227, 24, 55, 0.1); color: #E31837; }
+    .badge-c2 { background: rgba(253, 185, 36, 0.1); color: #b8860b; }
+    .badge-c3 { background: rgba(0, 177, 169, 0.1); color: #00B1A9; }
+    .sort-controls { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .sort-label { font-size: 13px; color: #6b7280; }
+    .item-count { font-size: 12px; color: #9ca3af; margin-left: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 10px 16px; color: #6b7280; font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; background: #f9fafb; border-bottom: 2px solid #e5e7eb; cursor: pointer; }
+    th:hover { color: #00B1A9; }
+    th.active { color: #00B1A9; }
+    td { padding: 10px 16px; border-bottom: 1px solid #e5e7eb; }
+    tr:nth-child(even) { background: #f9fafb; }
+    tr:last-child td { border-bottom: none; }
+    .table-container { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; max-height: 500px; overflow-y: auto; }
+    footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 32px; }
+    .footer-brand { color: #00B1A9; font-weight: 500; }
+    .empty-state { text-align: center; padding: 48px; color: #6b7280; }
+    .equip-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; }
+    .equip-card { padding: 20px; text-align: center; }
+    .equip-name { font-size: 14px; font-weight: 600; margin-bottom: 16px; }
+    .equip-ring { width: 120px; height: 120px; margin: 0 auto; position: relative; }
+    .equip-ring svg { transform: rotate(-90deg); }
+    .equip-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+    .equip-percent { font-size: 18px; font-weight: 700; color: #00B1A9; }
+    .equip-legend { margin-top: 12px; display: flex; justify-content: center; gap: 12px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <header style="margin-bottom: 32px;">
+    <h1 style="font-size: 28px; font-weight: 700; color: #00B1A9; margin: 0;">PCFK Instrument Health Monitor</h1>
+    <p style="color: #6b7280; margin: 4px 0 0; font-size: 14px;">Equipment Status Dashboard • Maintenance Department</p>
+  </header>
+
+  <div class="card">
+    <div class="filters">
+      <select id="areaFilter">
+        <option value="All">All Areas</option>
+        <option value="Ammonia">Ammonia</option>
+        <option value="Utility">Utility</option>
+        <option value="Urea">Urea</option>
+        <option value="PDF UET">PDF UET</option>
+        <option value="System">System</option>
+        <option value="Turbomachinery">Turbomachinery</option>
+      </select>
+      <select id="equipFilter">
+        <option value="All">All Equipment Types</option>
+      </select>
+      <select id="statusFilter">
+        <option value="All">All Status</option>
+        <option value="Healthy">Healthy</option>
+        <option value="Caution">Caution</option>
+        <option value="Warning">Warning</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="stats-grid" id="statsGrid"></div>
+
+  <div class="card">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="overview">Overview</button>
+      <button class="tab-btn" data-tab="areas">By Area</button>
+      <button class="tab-btn" data-tab="equipment">By Equipment</button>
+      <button class="tab-btn" data-tab="alerts">Alerts (<span id="alertCount">0</span>)</button>
+      <button class="tab-btn" data-tab="aging">Obsolescence (<span id="agingCount">0</span>)</button>
+    </div>
+    <div class="tab-content" id="tabContent"></div>
+  </div>
+
+  <footer>
+    <p class="footer-brand">PETRONAS Chemicals Fertiliser Kedah • Instrument Health Dashboard</p>
+    <p style="margin-top: 4px;">Last updated: <span id="lastUpdated"></span></p>
+  </footer>
+
+  <script>
+    const DEMO_DATA = [
+      { area: 'Ammonia', equipmentType: 'Gas Detector', description: 'NH3 Detector Synthesis Loop', functionalLocation: 'AM-100', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
+      { area: 'Ammonia', equipmentType: 'Gas Detector', description: 'H2 Detector Reformer Area', functionalLocation: 'AM-101', criticality: 'High', status: 'Warning', alarmDescription: 'Sensor calibration drift detected', rectification: 'Schedule calibration', notificationDate: '15-Nov-2025' },
+      { area: 'Ammonia', equipmentType: 'Gas Detector', description: 'CO Detector Process Area', functionalLocation: 'AM-102', criticality: 'Medium', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
+      { area: 'Ammonia', equipmentType: 'Field Instrument', description: 'PT-1001 Synthesis Pressure', functionalLocation: 'AM-200', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
+      { area: 'Ammonia', equipmentType: 'Field Instrument', description: 'TT-1002 Reformer Temp', functionalLocation: 'AM-201', criticality: 'High', status: 'Caution', alarmDescription: 'Minor deviation observed', rectification: 'Monitor trend', notificationDate: '18-Nov-2025' },
+      { area: 'Ammonia', equipmentType: 'Field Instrument', description: 'FT-1003 Feed Flow', functionalLocation: 'AM-202', criticality: 'Medium', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
+      { area: 'Ammonia', equipmentType: 'Analyzer', description: 'AIT-2001 H2 Purity', functionalLocation: 'AM-300', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
+      { area: 'Ammonia', equipmentType: 'Analyzer', description: 'AIT-2002 CO2 Content', functionalLocation: 'AM-301', criticality: 'High', status: 'Warning', alarmDescription: 'Sample line blockage', rectification: 'Clear sample line', notificationDate: '10-Nov-2025' },
+      { area: 'Ammonia', equipmentType: 'Control Valve', description: 'FV-3001 Feed Control', functionalLocation: 'AM-400', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
+      { area: 'Ammonia', equipmentType: 'Control Valve', description: 'PV-3002 Pressure Control', functionalLocation: 'AM-401', criticality: 'High', status: 'Caution', alarmDescription: 'Valve positioner offset', rectification: 'Recalibrate positioner', notificationDate: '20-Nov-2025' },
+      { area: 'Utility', equipmentType: 'Field Instrument', description: 'PT-4001 Steam Header', functionalLocation: 'UT-100', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
+      { area: 'Utility', equipmentType: 'Field Instrument', description: 'TT-4003 CW Return Temp', functionalLocation: 'UT-102', criticality: 'Medium', status: 'Caution', alarmDescription: 'High temp trend', rectification: 'Check cooling tower', notificationDate: '12-Nov-2025' },
+      { area: 'Utility', equipmentType: 'Control Valve', description: 'FV-4004 BFW Control', functionalLocation: 'UT-200', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
+      { area: 'Utility', equipmentType: 'Gas Detector', description: 'NG Detector Boiler Area', functionalLocation: 'UT-300', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
+      { area: 'Urea', equipmentType: 'Field Instrument', description: 'PT-5001 Reactor Pressure', functionalLocation: 'UR-100', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
+      { area: 'Urea', equipmentType: 'Field Instrument', description: 'LT-5003 Stripper Level', functionalLocation: 'UR-102', criticality: 'High', status: 'Warning', alarmDescription: 'Level transmitter fault', rectification: 'Replace transmitter', notificationDate: '08-Nov-2025' },
+      { area: 'Urea', equipmentType: 'Analyzer', description: 'AIT-5011 Biuret Content', functionalLocation: 'UR-201', criticality: 'Medium', status: 'Caution', alarmDescription: 'Calibration due', rectification: 'Schedule calibration', notificationDate: '22-Nov-2025' },
+      { area: 'Urea', equipmentType: 'Control Valve', description: 'FV-5020 NH3 Feed', functionalLocation: 'UR-300', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
+      { area: 'PDF UET', equipmentType: 'Field Instrument', description: 'FT-6001 Granulation Flow', functionalLocation: 'PU-100', criticality: 'Medium', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
+      { area: 'PDF UET', equipmentType: 'Field Instrument', description: 'WT-6003 Belt Scale', functionalLocation: 'PU-102', criticality: 'Medium', status: 'Caution', alarmDescription: 'Scale drift detected', rectification: 'Recalibrate scale', notificationDate: '05-Nov-2025' },
+      { area: 'System', equipmentType: 'System', description: 'DCS Controller A', functionalLocation: 'SY-100', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
+      { area: 'System', equipmentType: 'System', description: 'Fire and Gas Panel', functionalLocation: 'SY-103', criticality: 'High', status: 'Warning', alarmDescription: 'Communication fault', rectification: 'Check network connection', notificationDate: '01-Nov-2025' },
+      { area: 'System', equipmentType: 'System', description: 'PRM Server', functionalLocation: 'SY-104', criticality: 'Medium', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
+      { area: 'Turbomachinery', equipmentType: 'Turbomachinery', description: 'Synthesis Gas Compressor', functionalLocation: 'TM-100', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
+      { area: 'Turbomachinery', equipmentType: 'Turbomachinery', description: 'Refrigeration Compressor', functionalLocation: 'TM-101', criticality: 'High', status: 'Caution', alarmDescription: 'Vibration trend increasing', rectification: 'Monitor and plan inspection', notificationDate: '19-Nov-2025' },
+      { area: 'Turbomachinery', equipmentType: 'Turbomachinery', description: 'CO2 Compressor', functionalLocation: 'TM-102', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
+    ];
+
+    let data = DEMO_DATA;
+    let currentTab = 'overview';
+    let agingSortField = 'status';
+    let agingSortDir = 'desc';
+
+    const AREAS = ['Ammonia', 'Utility', 'Urea', 'PDF UET', 'System', 'Turbomachinery'];
+
+    function getFiltered() {
+      const area = document.getElementById('areaFilter').value;
+      const equip = document.getElementById('equipFilter').value;
+      const status = document.getElementById('statusFilter').value;
+      return data.filter(d => {
+        if (area !== 'All' && d.area !== area) return false;
+        if (equip !== 'All' && d.equipmentType !== equip) return false;
+        if (status !== 'All' && d.status !== status) return false;
+        return true;
+      });
+    }
+
+    function getStats(filtered) {
+      return {
+        total: filtered.length,
+        healthy: filtered.filter(d => d.status === 'Healthy').length,
+        caution: filtered.filter(d => d.status === 'Caution').length,
+        warning: filtered.filter(d => d.status === 'Warning').length
+      };
+    }
+
+    function formatCrit(c) {
+      if (!c) return '-';
+      const m = { high: 'C1', medium: 'C2', low: 'C3', c1: 'C1', c2: 'C2', c3: 'C3' };
+      return m[c.toLowerCase()] || c;
+    }
+
+    function getCritOrder(c) {
+      if (!c) return 99;
+      const x = c.toLowerCase();
+      if (x === 'high' || x === 'c1') return 1;
+      if (x === 'medium' || x === 'c2') return 2;
+      return 3;
+    }
+
+    function getCritClass(c) {
+      if (!c) return 'badge-c3';
+      const x = c.toLowerCase();
+      if (x === 'high' || x === 'c1') return 'badge-c1';
+      if (x === 'medium' || x === 'c2') return 'badge-c2';
+      return 'badge-c3';
+    }
+
+    function formatDate(d) {
+      if (!d) return '-';
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const mMap = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+      let dt;
+      if (typeof d === 'string') {
+        const parts = d.split('-');
+        if (parts.length === 3 && mMap[parts[1].toLowerCase()] !== undefined) {
+          dt = new Date(parseInt(parts[2]), mMap[parts[1].toLowerCase()], parseInt(parts[0]));
+        }
       }
-      body {
-        font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
-        background: #ffffff;
-        min-height: 100vh;
+      if (!dt || isNaN(dt.getTime())) return d;
+      return months[dt.getMonth()] + '-' + String(dt.getFullYear()).slice(-2);
+    }
+
+    function parseDate(d) {
+      if (!d) return null;
+      const mMap = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+      if (typeof d === 'string') {
+        const parts = d.split('-');
+        if (parts.length === 3 && mMap[parts[1].toLowerCase()] !== undefined) {
+          return new Date(parseInt(parts[2]), mMap[parts[1].toLowerCase()], parseInt(parts[0]));
+        }
       }
-      #root {
-        min-height: 100vh;
+      return null;
+    }
+
+    function renderStats() {
+      const filtered = getFiltered();
+      const stats = getStats(filtered);
+      document.getElementById('statsGrid').innerHTML = `
+        <div class="card stat-card stat-total">
+          <p class="stat-label">Total Equipment</p>
+          <p class="stat-value" style="color: #1f2937;">${stats.total}</p>
+        </div>
+        <div class="card stat-card stat-healthy">
+          <p class="stat-label">Healthy</p>
+          <p class="stat-value" style="color: #00B1A9;">${stats.healthy}</p>
+        </div>
+        <div class="card stat-card stat-caution">
+          <p class="stat-label">Caution</p>
+          <p class="stat-value" style="color: #FDB924;">${stats.caution}</p>
+        </div>
+        <div class="card stat-card stat-warning">
+          <p class="stat-label">Warning</p>
+          <p class="stat-value" style="color: #E31837;">${stats.warning}</p>
+        </div>
+      `;
+    }
+
+    function renderOverview() {
+      const filtered = getFiltered();
+      const stats = getStats(filtered);
+      const healthPercent = stats.total > 0 ? ((stats.healthy / stats.total) * 100).toFixed(1) : 0;
+      const dashArray = healthPercent * 5.34;
+      
+      return `
+        <div class="health-ring-container">
+          <div class="health-ring">
+            <svg viewBox="0 0 200 200" width="280" height="280">
+              <circle cx="100" cy="100" r="85" fill="none" stroke="#e5e7eb" stroke-width="20"/>
+              <circle cx="100" cy="100" r="85" fill="none" stroke="#00B1A9" stroke-width="20" stroke-linecap="round" stroke-dasharray="${dashArray} 534"/>
+            </svg>
+            <div class="health-center">
+              <div class="health-percent">${healthPercent}%</div>
+              <div class="health-label">Overall Health</div>
+            </div>
+          </div>
+          <div class="legend">
+            <div class="legend-item">
+              <div class="legend-color" style="background: #00B1A9;"></div>
+              <div class="legend-name">Healthy</div>
+              <div class="legend-value">${stats.healthy}</div>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: #FDB924;"></div>
+              <div class="legend-name">Caution</div>
+              <div class="legend-value">${stats.caution}</div>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: #E31837;"></div>
+              <div class="legend-name">Warning</div>
+              <div class="legend-value">${stats.warning}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderAreas() {
+      const areaStats = AREAS.map(area => {
+        const items = data.filter(d => d.area === area);
+        if (items.length === 0) return null;
+        return {
+          name: area,
+          healthy: items.filter(d => d.status === 'Healthy').length,
+          caution: items.filter(d => d.status === 'Caution').length,
+          warning: items.filter(d => d.status === 'Warning').length,
+          total: items.length
+        };
+      }).filter(Boolean);
+
+      return `<div class="area-grid">${areaStats.map(a => `
+        <div class="card area-card">
+          <div class="area-header">
+            <span class="area-name">${a.name}</span>
+            <span class="area-health">${((a.healthy / a.total) * 100).toFixed(1)}% Healthy</span>
+          </div>
+          <div class="area-stats">
+            <div class="area-stat area-stat-healthy">
+              <div class="area-stat-value" style="color: #00B1A9;">${a.healthy}</div>
+              <div class="area-stat-label">Healthy</div>
+            </div>
+            <div class="area-stat area-stat-caution">
+              <div class="area-stat-value" style="color: #FDB924;">${a.caution}</div>
+              <div class="area-stat-label">Caution</div>
+            </div>
+            <div class="area-stat area-stat-warning">
+              <div class="area-stat-value" style="color: #E31837;">${a.warning}</div>
+              <div class="area-stat-label">Warning</div>
+            </div>
+          </div>
+          <div class="progress-bar">
+            <div style="width: ${(a.healthy / a.total) * 100}%; background: #00B1A9;"></div>
+            <div style="width: ${(a.caution / a.total) * 100}%; background: #FDB924;"></div>
+            <div style="width: ${(a.warning / a.total) * 100}%; background: #E31837;"></div>
+          </div>
+          <p style="font-size: 12px; color: #6b7280; margin: 8px 0 0; text-align: right;">Total: ${a.total}</p>
+        </div>
+      `).join('')}</div>`;
+    }
+
+    function renderEquipment() {
+      const filtered = getFiltered();
+      const grouped = {};
+      filtered.forEach(item => {
+        if (!grouped[item.equipmentType]) grouped[item.equipmentType] = { name: item.equipmentType, healthy: 0, caution: 0, warning: 0 };
+        if (item.status === 'Healthy') grouped[item.equipmentType].healthy++;
+        else if (item.status === 'Caution') grouped[item.equipmentType].caution++;
+        else if (item.status === 'Warning') grouped[item.equipmentType].warning++;
+      });
+      const equipData = Object.values(grouped).sort((a, b) => (b.healthy + b.caution + b.warning) - (a.healthy + a.caution + a.warning));
+
+      return `<div class="equip-grid">${equipData.map(eq => {
+        const total = eq.healthy + eq.caution + eq.warning;
+        const pct = ((eq.healthy / total) * 100).toFixed(0);
+        const dashArray = pct * 2.51;
+        return `
+          <div class="card equip-card">
+            <div class="equip-name">${eq.name}</div>
+            <div class="equip-ring">
+              <svg viewBox="0 0 100 100" width="120" height="120">
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" stroke-width="10"/>
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#00B1A9" stroke-width="10" stroke-linecap="round" stroke-dasharray="${dashArray} 251"/>
+              </svg>
+              <div class="equip-center">
+                <div class="equip-percent">${pct}%</div>
+              </div>
+            </div>
+            <div class="equip-legend">
+              <span style="color: #00B1A9;">● ${eq.healthy}</span>
+              <span style="color: #FDB924;">● ${eq.caution}</span>
+              <span style="color: #E31837;">● ${eq.warning}</span>
+            </div>
+          </div>
+        `;
+      }).join('')}</div>`;
+    }
+
+    function renderAlerts() {
+      const filtered = getFiltered();
+      const alerts = filtered.filter(d => d.status !== 'Healthy' && d.alarmDescription && !d.alarmDescription.toLowerCase().includes('aging'))
+        .sort((a, b) => (a.status === 'Warning' ? 0 : 1) - (b.status === 'Warning' ? 0 : 1));
+      
+      document.getElementById('alertCount').textContent = alerts.length;
+      
+      if (alerts.length === 0) return '<div class="empty-state">No alerts matching current filters</div>';
+      
+      const groups = {};
+      alerts.forEach(item => {
+        if (!groups[item.equipmentType]) groups[item.equipmentType] = [];
+        groups[item.equipmentType].push(item);
+      });
+
+      return Object.keys(groups).sort().map(type => `
+        <div class="alert-group">
+          <div class="alert-header">
+            <span>${type}</span>
+            <span class="alert-count">${groups[type].length} item${groups[type].length !== 1 ? 's' : ''}</span>
+          </div>
+          <div class="alert-items">
+            ${groups[type].map(item => `
+              <div class="alert-row ${item.status.toLowerCase()}">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    <span class="badge badge-${item.status.toLowerCase()}">${item.status}</span>
+                    <span class="badge ${getCritClass(item.criticality)}">${formatCrit(item.criticality)}</span>
+                    <span style="font-size: 12px; color: #6b7280;">${item.area}</span>
+                  </div>
+                  <p style="margin: 0 0 4px; font-size: 14px; font-weight: 500;">${item.functionalLocation}</p>
+                  <p style="margin: 0; font-size: 13px; color: #6b7280;">${item.description}</p>
+                </div>
+                <div style="text-align: right; min-width: 180px;">
+                  ${item.notificationDate ? `<p style="margin: 0 0 4px; font-size: 11px; color: #6b7280;">${formatDate(item.notificationDate)}</p>` : ''}
+                  <p style="margin: 0 0 4px; font-size: 13px; color: #E31837;">${item.alarmDescription}</p>
+                  ${item.rectification ? `<p style="margin: 0; font-size: 12px; color: #6b7280;">Status: ${item.rectification}</p>` : ''}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderAging() {
+      const filtered = getFiltered();
+      let aging = filtered.filter(d => d.status !== 'Healthy' && d.alarmDescription && d.alarmDescription.toLowerCase().includes('aging'));
+      
+      aging.sort((a, b) => {
+        let cmp = 0;
+        switch (agingSortField) {
+          case 'status': cmp = (a.status === 'Warning' ? 0 : 1) - (b.status === 'Warning' ? 0 : 1); break;
+          case 'criticality': cmp = getCritOrder(a.criticality) - getCritOrder(b.criticality); break;
+          case 'area': cmp = (a.area || '').localeCompare(b.area || ''); break;
+          case 'date':
+            const da = parseDate(a.notificationDate), db = parseDate(b.notificationDate);
+            if (!da && !db) cmp = 0;
+            else if (!da) cmp = 1;
+            else if (!db) cmp = -1;
+            else cmp = da - db;
+            break;
+          case 'tagNo': cmp = (a.functionalLocation || '').localeCompare(b.functionalLocation || ''); break;
+          case 'equipmentType': cmp = (a.equipmentType || '').localeCompare(b.equipmentType || ''); break;
+          case 'description': cmp = (a.description || '').localeCompare(b.description || ''); break;
+        }
+        return agingSortDir === 'asc' ? cmp : -cmp;
+      });
+
+      document.getElementById('agingCount').textContent = aging.length;
+
+      const sortIcon = (field) => agingSortField === field ? (agingSortDir === 'asc' ? ' ↑' : ' ↓') : '';
+      const activeClass = (field) => agingSortField === field ? 'active' : '';
+
+      return `
+        <div class="sort-controls">
+          <span class="sort-label">Sort by:</span>
+          <select id="agingSortSelect" onchange="handleSortChange(this.value)">
+            <option value="status" ${agingSortField === 'status' ? 'selected' : ''}>Status</option>
+            <option value="criticality" ${agingSortField === 'criticality' ? 'selected' : ''}>Criticality</option>
+            <option value="area" ${agingSortField === 'area' ? 'selected' : ''}>Area</option>
+            <option value="date" ${agingSortField === 'date' ? 'selected' : ''}>Notification Date</option>
+            <option value="tagNo" ${agingSortField === 'tagNo' ? 'selected' : ''}>Tag No.</option>
+            <option value="equipmentType" ${agingSortField === 'equipmentType' ? 'selected' : ''}>Equipment Type</option>
+            <option value="description" ${agingSortField === 'description' ? 'selected' : ''}>Description</option>
+          </select>
+          <button onclick="toggleSortDir()">${agingSortDir === 'asc' ? '↑ Ascending' : '↓ Descending'}</button>
+          <span class="item-count">${aging.length} item${aging.length !== 1 ? 's' : ''}</span>
+        </div>
+        ${aging.length === 0 ? '<div class="empty-state">No obsolescence data available</div>' : `
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th class="${activeClass('status')}" onclick="handleSortClick('status')">Status${sortIcon('status')}</th>
+                <th class="${activeClass('criticality')}" onclick="handleSortClick('criticality')">Crit.${sortIcon('criticality')}</th>
+                <th class="${activeClass('equipmentType')}" onclick="handleSortClick('equipmentType')">Equip. Type${sortIcon('equipmentType')}</th>
+                <th class="${activeClass('area')}" onclick="handleSortClick('area')">Area${sortIcon('area')}</th>
+                <th class="${activeClass('date')}" onclick="handleSortClick('date')">Notif. Date${sortIcon('date')}</th>
+                <th class="${activeClass('tagNo')}" onclick="handleSortClick('tagNo')">Tag No.${sortIcon('tagNo')}</th>
+                <th class="${activeClass('description')}" onclick="handleSortClick('description')">Description${sortIcon('description')}</th>
+                <th>Alarm</th>
+                <th>Rectification</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${aging.map(item => `
+                <tr>
+                  <td><span class="badge badge-${item.status.toLowerCase()}">${item.status}</span></td>
+                  <td><span class="badge ${getCritClass(item.criticality)}">${formatCrit(item.criticality)}</span></td>
+                  <td style="font-size: 12px;">${item.equipmentType}</td>
+                  <td>${item.area}</td>
+                  <td style="color: #6b7280;">${formatDate(item.notificationDate)}</td>
+                  <td style="font-weight: 500;">${item.functionalLocation}</td>
+                  <td style="color: #6b7280;">${item.description}</td>
+                  <td style="color: #E31837;">${item.alarmDescription}</td>
+                  <td style="color: #6b7280;">${item.rectification || '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>`}
+      `;
+    }
+
+    function handleSortClick(field) {
+      if (agingSortField === field) {
+        agingSortDir = agingSortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        agingSortField = field;
+        agingSortDir = 'asc';
       }
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+      renderTab();
+    }
+
+    function handleSortChange(field) {
+      agingSortField = field;
+      renderTab();
+    }
+
+    function toggleSortDir() {
+      agingSortDir = agingSortDir === 'asc' ? 'desc' : 'asc';
+      renderTab();
+    }
+
+    function renderTab() {
+      const content = document.getElementById('tabContent');
+      switch (currentTab) {
+        case 'overview': content.innerHTML = renderOverview(); break;
+        case 'areas': content.innerHTML = renderAreas(); break;
+        case 'equipment': content.innerHTML = renderEquipment(); break;
+        case 'alerts': content.innerHTML = renderAlerts(); break;
+        case 'aging': content.innerHTML = renderAging(); break;
+      }
+    }
+
+    function updateEquipmentFilter() {
+      const types = [...new Set(data.map(d => d.equipmentType))].filter(t => t).sort();
+      const select = document.getElementById('equipFilter');
+      select.innerHTML = '<option value="All">All Equipment Types</option>' + types.map(t => `<option value="${t}">${t}</option>`).join('');
+    }
+
+    function render() {
+      renderStats();
+      renderTab();
+    }
+
+    // Event listeners
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentTab = btn.dataset.tab;
+        renderTab();
+      });
+    });
+
+    document.getElementById('areaFilter').addEventListener('change', render);
+    document.getElementById('equipFilter').addEventListener('change', render);
+    document.getElementById('statusFilter').addEventListener('change', render);
+
+    // Initialize
+    document.getElementById('lastUpdated').textContent = new Date().toLocaleDateString('en-MY', { day: 'numeric', month: 'long', year: 'numeric' });
+    updateEquipmentFilter();
+    render();
+  </script>
+</body>
 </html>
