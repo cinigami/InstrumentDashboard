@@ -97,15 +97,21 @@ export function useEquipmentData() {
         notification_date: parseDate(item.notificationDate)
       }));
 
-      // Use upsert to insert or update based on functional_location
-      const { error: upsertError } = await supabase
+      // Delete existing data first, then insert new data
+      // This is simpler and doesn't require unique constraints
+      const { error: deleteError } = await supabase
         .from('equipment')
-        .upsert(dbRecords, {
-          onConflict: 'functional_location',
-          ignoreDuplicates: false
-        });
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
 
-      if (upsertError) throw upsertError;
+      if (deleteError) throw deleteError;
+
+      // Insert all new records
+      const { error: insertError } = await supabase
+        .from('equipment')
+        .insert(dbRecords);
+
+      if (insertError) throw insertError;
 
       // Update the last refreshed timestamp
       const now = new Date();
