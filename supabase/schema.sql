@@ -24,12 +24,6 @@ CREATE INDEX IF NOT EXISTS idx_equipment_area ON equipment(area);
 CREATE INDEX IF NOT EXISTS idx_equipment_status ON equipment(status);
 CREATE INDEX IF NOT EXISTS idx_equipment_functional_location ON equipment(functional_location);
 
--- Create a unique constraint on functional_location for UPSERT operations
--- This allows us to update existing records when re-uploading Excel data
-CREATE UNIQUE INDEX IF NOT EXISTS idx_equipment_unique_location
-ON equipment(functional_location)
-WHERE functional_location IS NOT NULL AND functional_location != '';
-
 -- ============================================
 -- Row Level Security (RLS) Policies
 -- ============================================
