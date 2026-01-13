@@ -6,6 +6,7 @@ export function useEquipmentData() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
 
   // Check if Supabase is configured
   const isSupabaseConfigured = supabase !== null;
@@ -22,16 +23,29 @@ export function useEquipmentData() {
     setError(null);
 
     try {
-      const { data: equipment, error: fetchError } = await supabase
-        .from('equipment')
-        .select('*')
-        .order('area', { ascending: true })
-        .order('equipment_type', { ascending: true });
+      // Fetch equipment data and metadata in parallel
+      const [equipmentResult, metaResult] = await Promise.all([
+        supabase
+          .from('equipment')
+          .select('*')
+          .order('area', { ascending: true })
+          .order('equipment_type', { ascending: true }),
+        supabase
+          .from('dashboard_meta')
+          .select('last_refreshed_at')
+          .eq('id', 1)
+          .single()
+      ]);
 
-      if (fetchError) throw fetchError;
+      if (equipmentResult.error) throw equipmentResult.error;
+
+      // Set last refreshed timestamp (may not exist yet)
+      if (metaResult.data?.last_refreshed_at) {
+        setLastRefreshedAt(new Date(metaResult.data.last_refreshed_at));
+      }
 
       // Transform database format to app format
-      const transformedData = equipment.map(item => ({
+      const transformedData = equipmentResult.data.map(item => ({
         area: item.area,
         equipmentType: item.equipment_type || '',
         description: item.description || '',
@@ -93,6 +107,22 @@ export function useEquipmentData() {
 
       if (upsertError) throw upsertError;
 
+      // Update the last refreshed timestamp
+      const now = new Date();
+      const { error: metaError } = await supabase
+        .from('dashboard_meta')
+        .upsert({
+          id: 1,
+          last_refreshed_at: now.toISOString(),
+          refreshed_by: 'Admin'
+        });
+
+      if (metaError) {
+        console.warn('Failed to update refresh timestamp:', metaError);
+      } else {
+        setLastRefreshedAt(now);
+      }
+
       setData(equipmentData);
       setIsSaving(false);
       return true;
@@ -150,6 +180,7 @@ export function useEquipmentData() {
     isLoading,
     isSaving,
     error,
+    lastRefreshedAt,
     isSupabaseConfigured,
     fetchEquipment,
     saveEquipment,

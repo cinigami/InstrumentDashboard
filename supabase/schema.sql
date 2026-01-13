@@ -81,3 +81,21 @@ CREATE TRIGGER update_equipment_updated_at
   BEFORE UPDATE ON equipment
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
+-- Dashboard Metadata Table
+-- Stores when data was last refreshed by admin
+-- ============================================
+CREATE TABLE IF NOT EXISTS dashboard_meta (
+  id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1), -- Ensures single row
+  last_refreshed_at TIMESTAMPTZ DEFAULT now(),
+  refreshed_by TEXT DEFAULT 'Admin'
+);
+
+-- Insert initial row if not exists
+INSERT INTO dashboard_meta (id, last_refreshed_at)
+VALUES (1, now())
+ON CONFLICT (id) DO NOTHING;
+
+-- Disable RLS for dashboard_meta
+ALTER TABLE dashboard_meta DISABLE ROW LEVEL SECURITY;

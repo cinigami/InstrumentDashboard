@@ -28,6 +28,7 @@ export default function InstrumentHealthDashboard() {
     isLoading: isLoadingData,
     isSaving,
     error,
+    lastRefreshedAt,
     isSupabaseConfigured,
     saveEquipment,
     clearAllData,
@@ -54,6 +55,19 @@ export default function InstrumentHealthDashboard() {
       'c3': 'C3'
     };
     return critMap[criticality.toLowerCase()] || criticality;
+  };
+
+  // Format last refreshed timestamp
+  const formatRefreshTime = (date) => {
+    if (!date) return null;
+    return date.toLocaleString('en-MY', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
   };
 
   // Format date to mmm-yy format
@@ -504,6 +518,26 @@ export default function InstrumentHealthDashboard() {
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            {lastRefreshedAt && (
+              <div style={{
+                background: 'rgba(32, 65, 154, 0.1)',
+                border: '1px solid rgba(32, 65, 154, 0.3)',
+                borderRadius: '8px',
+                padding: '8px 16px',
+                fontSize: '13px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#20419A" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12,6 12,12 16,14"/>
+                </svg>
+                <span style={{ color: '#20419A' }}>
+                  Last refreshed: {formatRefreshTime(lastRefreshedAt)}
+                </span>
+              </div>
+            )}
             {(fileName || (data && isSupabaseConfigured)) && (
               <div style={{
                 background: 'rgba(0, 177, 169, 0.1)',
