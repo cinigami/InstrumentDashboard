@@ -538,36 +538,34 @@ export default function InstrumentHealthDashboard() {
                 </span>
               </div>
             )}
-            {(fileName || (data && isSupabaseConfigured)) && (
-              <div style={{
-                background: 'rgba(0, 177, 169, 0.1)',
-                border: '1px solid rgba(0, 177, 169, 0.3)',
-                borderRadius: '8px',
-                padding: '8px 16px',
-                fontSize: '13px',
-                display: 'flex',
+
+            {/* Upload Excel Button - Always visible */}
+            <label style={{ cursor: 'pointer' }}>
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleFileUpload}
+                style={{ display: 'none' }}
+              />
+              <span style={{
+                display: 'inline-flex',
                 alignItems: 'center',
-                gap: '8px'
+                gap: '8px',
+                background: '#00B1A9',
+                color: '#fff',
+                borderRadius: '8px',
+                padding: '10px 20px',
+                fontSize: '14px',
+                fontWeight: 500
               }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00B1A9" strokeWidth="2">
-                  {fileName ? (
-                    <>
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                      <polyline points="14,2 14,8 20,8"/>
-                    </>
-                  ) : (
-                    <>
-                      <ellipse cx="12" cy="5" rx="9" ry="3"/>
-                      <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
-                      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
-                    </>
-                  )}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17,8 12,3 7,8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
                 </svg>
-                <span style={{ color: '#00B1A9' }}>
-                  {fileName || 'Loaded from database'}
-                </span>
-              </div>
-            )}
+                Upload Excel
+              </span>
+            </label>
           </div>
         </div>
       </header>
