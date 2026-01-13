@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useEquipmentData } from './hooks/useEquipmentData';
 
 const STATUS_COLORS = {
   'Healthy': '#00B1A9',   // PETRONAS Emerald Green
@@ -20,71 +21,26 @@ const AREA_COLORS = {
 const AREAS = ['Ammonia', 'Utility', 'Urea', 'PDF UET', 'System', 'Turbomachinery'];
 
 export default function InstrumentHealthDashboard() {
-  // Demo data based on actual PCFK equipment structure
-  const DEMO_DATA = [
-    // Ammonia - Gas Detectors
-    { area: 'Ammonia', equipmentType: 'Gas Detector', description: 'NH3 Detector Synthesis Loop', functionalLocation: 'AM-100', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'Ammonia', equipmentType: 'Gas Detector', description: 'H2 Detector Reformer Area', functionalLocation: 'AM-101', criticality: 'High', status: 'Warning', alarmDescription: 'Sensor calibration drift detected', rectification: 'Schedule calibration', notificationDate: '15-Nov-2025' },
-    { area: 'Ammonia', equipmentType: 'Gas Detector', description: 'CO Detector Process Area', functionalLocation: 'AM-102', criticality: 'Medium', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    // Ammonia - Field Instruments
-    { area: 'Ammonia', equipmentType: 'Field Instrument', description: 'PT-1001 Synthesis Pressure', functionalLocation: 'AM-200', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'Ammonia', equipmentType: 'Field Instrument', description: 'TT-1002 Reformer Temp', functionalLocation: 'AM-201', criticality: 'High', status: 'Caution', alarmDescription: 'Minor deviation observed', rectification: 'Monitor trend', notificationDate: '18-Nov-2025' },
-    { area: 'Ammonia', equipmentType: 'Field Instrument', description: 'FT-1003 Feed Flow', functionalLocation: 'AM-202', criticality: 'Medium', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'Ammonia', equipmentType: 'Field Instrument', description: 'LT-1004 Separator Level', functionalLocation: 'AM-203', criticality: 'Medium', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    // Ammonia - Analyzers
-    { area: 'Ammonia', equipmentType: 'Analyzer', description: 'AIT-2001 H2 Purity', functionalLocation: 'AM-300', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'Ammonia', equipmentType: 'Analyzer', description: 'AIT-2002 CO2 Content', functionalLocation: 'AM-301', criticality: 'High', status: 'Warning', alarmDescription: 'Sample line blockage', rectification: 'Clear sample line', notificationDate: '10-Nov-2025' },
-    // Ammonia - Control Valves
-    { area: 'Ammonia', equipmentType: 'Control Valve', description: 'FV-3001 Feed Control', functionalLocation: 'AM-400', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'Ammonia', equipmentType: 'Control Valve', description: 'PV-3002 Pressure Control', functionalLocation: 'AM-401', criticality: 'High', status: 'Caution', alarmDescription: 'Valve positioner offset', rectification: 'Recalibrate positioner', notificationDate: '20-Nov-2025' },
-    { area: 'Ammonia', equipmentType: 'Control Valve', description: 'TV-3003 Temp Control', functionalLocation: 'AM-402', criticality: 'Medium', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    
-    // Utility
-    { area: 'Utility', equipmentType: 'Field Instrument', description: 'PT-4001 Steam Header', functionalLocation: 'UT-100', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'Utility', equipmentType: 'Field Instrument', description: 'FT-4002 Cooling Water Flow', functionalLocation: 'UT-101', criticality: 'Medium', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'Utility', equipmentType: 'Field Instrument', description: 'TT-4003 CW Return Temp', functionalLocation: 'UT-102', criticality: 'Medium', status: 'Caution', alarmDescription: 'High temp trend', rectification: 'Check cooling tower', notificationDate: '12-Nov-2025' },
-    { area: 'Utility', equipmentType: 'Control Valve', description: 'FV-4004 BFW Control', functionalLocation: 'UT-200', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'Utility', equipmentType: 'Control Valve', description: 'PV-4005 Steam Pressure', functionalLocation: 'UT-201', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'Utility', equipmentType: 'Gas Detector', description: 'NG Detector Boiler Area', functionalLocation: 'UT-300', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    
-    // Urea
-    { area: 'Urea', equipmentType: 'Field Instrument', description: 'PT-5001 Reactor Pressure', functionalLocation: 'UR-100', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'Urea', equipmentType: 'Field Instrument', description: 'TT-5002 Reactor Temp', functionalLocation: 'UR-101', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'Urea', equipmentType: 'Field Instrument', description: 'LT-5003 Stripper Level', functionalLocation: 'UR-102', criticality: 'High', status: 'Warning', alarmDescription: 'Level transmitter fault', rectification: 'Replace transmitter', notificationDate: '08-Nov-2025' },
-    { area: 'Urea', equipmentType: 'Field Instrument', description: 'FT-5004 Carbamate Flow', functionalLocation: 'UR-103', criticality: 'Medium', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'Urea', equipmentType: 'Analyzer', description: 'AIT-5010 NH3 Content', functionalLocation: 'UR-200', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'Urea', equipmentType: 'Analyzer', description: 'AIT-5011 Biuret Content', functionalLocation: 'UR-201', criticality: 'Medium', status: 'Caution', alarmDescription: 'Calibration due', rectification: 'Schedule calibration', notificationDate: '22-Nov-2025' },
-    { area: 'Urea', equipmentType: 'Control Valve', description: 'FV-5020 NH3 Feed', functionalLocation: 'UR-300', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'Urea', equipmentType: 'Control Valve', description: 'PV-5021 Reactor Pressure', functionalLocation: 'UR-301', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    
-    // PDF UET
-    { area: 'PDF UET', equipmentType: 'Field Instrument', description: 'FT-6001 Granulation Flow', functionalLocation: 'PU-100', criticality: 'Medium', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'PDF UET', equipmentType: 'Field Instrument', description: 'TT-6002 Dryer Temp', functionalLocation: 'PU-101', criticality: 'Medium', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'PDF UET', equipmentType: 'Field Instrument', description: 'WT-6003 Belt Scale', functionalLocation: 'PU-102', criticality: 'Medium', status: 'Caution', alarmDescription: 'Scale drift detected', rectification: 'Recalibrate scale', notificationDate: '05-Nov-2025' },
-    { area: 'PDF UET', equipmentType: 'Control Valve', description: 'FV-6010 Coating Control', functionalLocation: 'PU-200', criticality: 'Medium', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    
-    // System
-    { area: 'System', equipmentType: 'System', description: 'DCS Controller A', functionalLocation: 'SY-100', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'System', equipmentType: 'System', description: 'DCS Controller B', functionalLocation: 'SY-101', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'System', equipmentType: 'System', description: 'SIS Controller', functionalLocation: 'SY-102', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'System', equipmentType: 'System', description: 'Fire & Gas Panel', functionalLocation: 'SY-103', criticality: 'High', status: 'Warning', alarmDescription: 'Communication fault', rectification: 'Check network connection', notificationDate: '01-Nov-2025' },
-    { area: 'System', equipmentType: 'System', description: 'PRM Server', functionalLocation: 'SY-104', criticality: 'Medium', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    
-    // Turbomachinery
-    { area: 'Turbomachinery', equipmentType: 'Turbomachinery', description: 'Synthesis Gas Compressor', functionalLocation: 'TM-100', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'Turbomachinery', equipmentType: 'Turbomachinery', description: 'Refrigeration Compressor', functionalLocation: 'TM-101', criticality: 'High', status: 'Caution', alarmDescription: 'Vibration trend increasing', rectification: 'Monitor and plan inspection', notificationDate: '19-Nov-2025' },
-    { area: 'Turbomachinery', equipmentType: 'Turbomachinery', description: 'CO2 Compressor', functionalLocation: 'TM-102', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'Turbomachinery', equipmentType: 'Turbomachinery', description: 'Process Air Compressor', functionalLocation: 'TM-103', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-    { area: 'Turbomachinery', equipmentType: 'Turbomachinery', description: 'Steam Turbine Generator', functionalLocation: 'TM-104', criticality: 'High', status: 'Healthy', alarmDescription: '', rectification: '', notificationDate: '' },
-  ];
+  // Use Supabase data hook
+  const {
+    data,
+    setData,
+    isLoading: isLoadingData,
+    isSaving,
+    error,
+    isSupabaseConfigured,
+    saveEquipment,
+    clearAllData,
+    clearError
+  } = useEquipmentData();
 
-  const [data, setData] = useState(DEMO_DATA);
   const [selectedArea, setSelectedArea] = useState('All');
   const [selectedEquipment, setSelectedEquipment] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
-  const [fileName, setFileName] = useState('Demo Data (Upload your file to replace)');
-  const [isLoading, setIsLoading] = useState(false);
+  const [fileName, setFileName] = useState('');
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [viewMode, setViewMode] = useState('overview');
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   // Format criticality to C1/C2/C3 format
   const formatCriticality = (criticality) => {
@@ -143,19 +99,20 @@ export default function InstrumentHealthDashboard() {
     return `${month}-${year}`;
   };
 
-  const handleFileUpload = useCallback((event) => {
+  const handleFileUpload = useCallback(async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-    
-    setIsLoading(true);
+
+    setIsProcessingFile(true);
     setFileName(file.name);
-    
+    clearError();
+
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const workbook = XLSX.read(e.target.result, { type: 'array' });
         const allData = [];
-        
+
         AREAS.forEach(sheetName => {
           if (workbook.SheetNames.includes(sheetName)) {
             const sheet = workbook.Sheets[sheetName];
@@ -179,16 +136,36 @@ export default function InstrumentHealthDashboard() {
             });
           }
         });
-        
-        setData(allData);
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error parsing file:', error);
-        setIsLoading(false);
+
+        // Save to Supabase if configured
+        if (isSupabaseConfigured && allData.length > 0) {
+          const success = await saveEquipment(allData);
+          if (!success) {
+            // Still show the data locally even if save failed
+            setData(allData);
+          }
+        } else {
+          // No Supabase - just set local state
+          setData(allData);
+        }
+
+        setIsProcessingFile(false);
+      } catch (err) {
+        console.error('Error parsing file:', err);
+        setIsProcessingFile(false);
       }
     };
     reader.readAsArrayBuffer(file);
-  }, []);
+  }, [isSupabaseConfigured, saveEquipment, setData, clearError]);
+
+  // Handle clear all data with confirmation
+  const handleClearAllData = useCallback(async () => {
+    const success = await clearAllData();
+    if (success) {
+      setFileName('');
+      setShowClearConfirm(false);
+    }
+  }, [clearAllData]);
 
   const filteredData = useMemo(() => {
     if (!data) return [];
@@ -527,7 +504,7 @@ export default function InstrumentHealthDashboard() {
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            {fileName && (
+            {(fileName || (data && isSupabaseConfigured)) && (
               <div style={{
                 background: 'rgba(0, 177, 169, 0.1)',
                 border: '1px solid rgba(0, 177, 169, 0.3)',
@@ -539,18 +516,99 @@ export default function InstrumentHealthDashboard() {
                 gap: '8px'
               }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00B1A9" strokeWidth="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14,2 14,8 20,8"/>
+                  {fileName ? (
+                    <>
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14,2 14,8 20,8"/>
+                    </>
+                  ) : (
+                    <>
+                      <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                      <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                    </>
+                  )}
                 </svg>
-                <span style={{ color: '#00B1A9' }}>{fileName}</span>
+                <span style={{ color: '#00B1A9' }}>
+                  {fileName || 'Loaded from database'}
+                </span>
               </div>
             )}
           </div>
         </div>
       </header>
 
-      {/* Upload Section */}
-      {!data && (
+      {/* Error Message */}
+      {error && (
+        <div style={{
+          background: 'rgba(227, 24, 55, 0.1)',
+          border: '1px solid rgba(227, 24, 55, 0.3)',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          marginBottom: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#E31837' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="15" y1="9" x2="9" y2="15"/>
+              <line x1="9" y1="9" x2="15" y2="15"/>
+            </svg>
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={clearError}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#E31837',
+              cursor: 'pointer',
+              padding: '4px'
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Supabase Config Warning */}
+      {!isSupabaseConfigured && (
+        <div style={{
+          background: 'rgba(253, 185, 36, 0.1)',
+          border: '1px solid rgba(253, 185, 36, 0.3)',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          marginBottom: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          color: '#b8860b'
+        }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <span>Supabase not configured. Data will not persist. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env</span>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {isLoadingData && (
+        <div className="card" style={{ padding: '48px', textAlign: 'center' }}>
+          <div className="pulse" style={{ fontSize: '18px', color: '#00B1A9' }}>
+            Loading equipment data...
+          </div>
+        </div>
+      )}
+
+      {/* Upload Section - Show when no data and not loading */}
+      {!data && !isLoadingData && (
         <div className="card" style={{ padding: '48px', textAlign: 'center', marginBottom: '24px' }}>
           <label className="upload-zone" style={{
             display: 'flex',
@@ -602,7 +660,8 @@ export default function InstrumentHealthDashboard() {
         </div>
       )}
 
-      {isLoading && (
+      {/* Processing File Indicator */}
+      {isProcessingFile && (
         <div className="card" style={{ padding: '48px', textAlign: 'center' }}>
           <div className="pulse" style={{ fontSize: '18px', color: '#00B1A9' }}>
             Processing file...
@@ -610,7 +669,84 @@ export default function InstrumentHealthDashboard() {
         </div>
       )}
 
-      {data && !isLoading && (
+      {/* Saving Indicator */}
+      {isSaving && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          background: '#00B1A9',
+          color: '#fff',
+          padding: '12px 20px',
+          borderRadius: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          boxShadow: '0 4px 12px rgba(0, 177, 169, 0.3)',
+          zIndex: 1000
+        }}>
+          <div className="pulse">Saving to database...</div>
+        </div>
+      )}
+
+      {/* Clear Confirmation Modal */}
+      {showClearConfirm && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div className="card" style={{ padding: '24px', maxWidth: '400px', textAlign: 'center' }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E31837" strokeWidth="2" style={{ margin: '0 auto 16px' }}>
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <h3 style={{ margin: '0 0 8px', color: '#1f2937' }}>Clear All Data?</h3>
+            <p style={{ margin: '0 0 24px', color: '#6b7280', fontSize: '14px' }}>
+              This will permanently delete all equipment records from the database. This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                style={{
+                  padding: '10px 24px',
+                  background: '#f3f4f6',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClearAllData}
+                disabled={isSaving}
+                style={{
+                  padding: '10px 24px',
+                  background: '#E31837',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  opacity: isSaving ? 0.6 : 1
+                }}
+              >
+                {isSaving ? 'Clearing...' : 'Clear All Data'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {data && !isProcessingFile && !isLoadingData && (
         <>
           {/* Filters & Actions */}
           <div className="card" style={{ padding: '20px', marginBottom: '24px' }}>
@@ -665,6 +801,31 @@ export default function InstrumentHealthDashboard() {
                     Update Data
                   </span>
                 </label>
+                {isSupabaseConfigured && (
+                  <button
+                    onClick={() => setShowClearConfirm(true)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      background: '#ffffff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      padding: '10px 16px',
+                      fontSize: '14px',
+                      color: '#E31837',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="3,6 5,6 21,6"/>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                      <line x1="10" y1="11" x2="10" y2="17"/>
+                      <line x1="14" y1="11" x2="14" y2="17"/>
+                    </svg>
+                    Clear All
+                  </button>
+                )}
               </div>
             </div>
           </div>
