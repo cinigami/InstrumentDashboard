@@ -256,7 +256,7 @@ export default function InstrumentHealthDashboard() {
   const alertItemsAll = useMemo(() => {
     if (!filteredData.length) return [];
     return filteredData
-      .filter(d => d.status !== 'Healthy' && d.alarmDescription && !d.alarmDescription.toLowerCase().includes('aging'))
+      .filter(d => d.status !== 'Healthy' && d.alarmDescription && !d.alarmDescription.toLowerCase().includes('obsolete'))
       .sort((a, b) => {
         // Warning comes first, then Caution
         if (a.status === 'Warning' && b.status === 'Caution') return -1;
@@ -272,7 +272,7 @@ export default function InstrumentHealthDashboard() {
   const agingItems = useMemo(() => {
     if (!filteredData.length) return [];
     return filteredData
-      .filter(d => d.status !== 'Healthy' && d.alarmDescription && d.alarmDescription.toLowerCase().includes('aging'))
+      .filter(d => d.status !== 'Healthy' && d.alarmDescription && d.alarmDescription.toLowerCase().includes('obsolete'))
       .sort((a, b) => {
         // Warning comes first, then Caution
         if (a.status === 'Warning' && b.status === 'Caution') return -1;
