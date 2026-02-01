@@ -23,21 +23,35 @@ export function useEquipmentData() {
     setError(null);
 
     try {
-      // Fetch equipment data and metadata in parallel
-      const [equipmentResult, metaResult] = await Promise.all([
-        supabase
+      // Fetch metadata
+      const metaResult = await supabase
+        .from('dashboard_meta')
+        .select('last_refreshed_at')
+        .eq('id', 1)
+        .single();
+
+      // Fetch all equipment data with pagination (Supabase default limit is 1000)
+      let allEquipment = [];
+      const pageSize = 1000;
+      let from = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error: fetchError } = await supabase
           .from('equipment')
           .select('*')
           .order('area', { ascending: true })
-          .order('equipment_type', { ascending: true }),
-        supabase
-          .from('dashboard_meta')
-          .select('last_refreshed_at')
-          .eq('id', 1)
-          .single()
-      ]);
+          .order('equipment_type', { ascending: true })
+          .range(from, from + pageSize - 1);
 
-      if (equipmentResult.error) throw equipmentResult.error;
+        if (fetchError) throw fetchError;
+
+        allEquipment = allEquipment.concat(data);
+        hasMore = data.length === pageSize;
+        from += pageSize;
+      }
+
+      const equipmentResult = { data: allEquipment };
 
       // Set last refreshed timestamp (may not exist yet)
       if (metaResult.data?.last_refreshed_at) {
