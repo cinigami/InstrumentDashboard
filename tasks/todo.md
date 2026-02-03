@@ -134,3 +134,39 @@ VITE_SUPABASE_ANON_KEY=your_anon_key
 3. Copy `.env.example` to `.env` and add credentials
 4. Run `npm install` to install new dependency
 5. For Netlify: Add environment variables in site settings
+
+---
+
+# Add "By Criticality" Tab
+
+## Overview
+Add a new tab that displays equipment grouped by criticality level (C1, C2, C3).
+
+## Todo Checklist
+- [x] Add `criticalityChartData` useMemo to compute data grouped by criticality
+- [x] Add "By Criticality" tab button after "By Equipment"
+- [x] Add the view rendering for `viewMode === 'criticality'`
+
+## Review Summary
+
+### Changes Made to App.jsx
+
+**1. Added `criticalityChartData` useMemo (lines ~246-265):**
+- Groups filtered data by criticality (C1, C2, C3)
+- Counts Healthy/Caution/Warning status for each group
+- Orders results by criticality priority (C1 → C2 → C3)
+- Skips items without criticality data
+
+**2. Added "By Criticality" tab button (after "By Equipment"):**
+- New button with `viewMode === 'criticality'` state
+
+**3. Added criticality view rendering:**
+- Card layout matching existing "By Area" design
+- Shows criticality badge with color coding:
+  - C1 (High): Red theme
+  - C2 (Medium): Orange/Yellow theme
+  - C3 (Low): Teal theme
+- Displays health percentage per criticality
+- Shows Healthy/Caution/Warning counts
+- Shows total equipment count
+- Empty state when no criticality data available

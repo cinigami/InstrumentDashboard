@@ -231,17 +231,38 @@ export default function InstrumentHealthDashboard() {
   const equipmentChartData = useMemo(() => {
     if (!filteredData.length) return [];
     const grouped = {};
-    
+
     filteredData.forEach(item => {
       if (!grouped[item.equipmentType]) {
         grouped[item.equipmentType] = { name: item.equipmentType, Healthy: 0, Caution: 0, Warning: 0 };
       }
       grouped[item.equipmentType][item.status]++;
     });
-    
-    return Object.values(grouped).sort((a, b) => 
+
+    return Object.values(grouped).sort((a, b) =>
       (b.Healthy + b.Caution + b.Warning) - (a.Healthy + a.Caution + a.Warning)
     );
+  }, [filteredData]);
+
+  const criticalityChartData = useMemo(() => {
+    if (!filteredData.length) return [];
+    const grouped = {};
+    const criticalityOrder = ['C1', 'C2', 'C3'];
+
+    filteredData.forEach(item => {
+      const crit = formatCriticality(item.criticality);
+      if (crit === '-') return; // Skip items without criticality
+      if (!grouped[crit]) {
+        grouped[crit] = { name: crit, Healthy: 0, Caution: 0, Warning: 0, total: 0 };
+      }
+      grouped[crit][item.status]++;
+      grouped[crit].total++;
+    });
+
+    // Sort by criticality order (C1, C2, C3)
+    return criticalityOrder
+      .filter(crit => grouped[crit])
+      .map(crit => grouped[crit]);
   }, [filteredData]);
 
   const pieData = useMemo(() => {
@@ -992,13 +1013,19 @@ export default function InstrumentHealthDashboard() {
               >
                 By Area
               </button>
-              <button 
+              <button
                 className={`tab-btn ${viewMode === 'equipment' ? 'active' : ''}`}
                 onClick={() => setViewMode('equipment')}
               >
                 By Equipment
               </button>
-              <button 
+              <button
+                className={`tab-btn ${viewMode === 'criticality' ? 'active' : ''}`}
+                onClick={() => setViewMode('criticality')}
+              >
+                By Criticality
+              </button>
+              <button
                 className={`tab-btn ${viewMode === 'alerts' ? 'active' : ''}`}
                 onClick={() => setViewMode('alerts')}
               >
@@ -1192,6 +1219,93 @@ export default function InstrumentHealthDashboard() {
                       </div>
                     );
                   })}
+                </div>
+              )}
+
+              {viewMode === 'criticality' && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+                  {criticalityChartData.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '48px', color: '#6b7280', gridColumn: '1 / -1' }}>
+                      <p>No criticality data available</p>
+                    </div>
+                  ) : (
+                    criticalityChartData.map((crit) => {
+                      const critHealthPercent = ((crit.Healthy / crit.total) * 100).toFixed(1);
+                      const critColors = {
+                        'C1': { bg: 'rgba(227, 24, 55, 0.1)', text: '#E31837', label: 'High' },
+                        'C2': { bg: 'rgba(253, 185, 36, 0.1)', text: '#b8860b', label: 'Medium' },
+                        'C3': { bg: 'rgba(0, 177, 169, 0.1)', text: '#00B1A9', label: 'Low' }
+                      };
+                      const colorScheme = critColors[crit.name] || critColors['C3'];
+
+                      return (
+                        <div key={crit.name} className="card" style={{ padding: '20px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <span style={{
+                                background: colorScheme.bg,
+                                color: colorScheme.text,
+                                padding: '6px 14px',
+                                borderRadius: '8px',
+                                fontSize: '18px',
+                                fontWeight: 700,
+                                fontFamily: '"Museo Sans", "IBM Plex Sans", sans-serif'
+                              }}>
+                                {crit.name}
+                              </span>
+                              <span style={{ fontSize: '14px', color: '#6b7280' }}>{colorScheme.label} Criticality</span>
+                            </div>
+                            <span style={{
+                              background: 'rgba(0, 177, 169, 0.15)',
+                              color: '#00B1A9',
+                              padding: '4px 10px',
+                              borderRadius: '12px',
+                              fontSize: '13px',
+                              fontWeight: 500,
+                              fontFamily: '"Museo Sans", "IBM Plex Sans", sans-serif'
+                            }}>
+                              {critHealthPercent}% Healthy
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+                            <div style={{ flex: 1, textAlign: 'center', padding: '12px', background: 'rgba(0, 177, 169, 0.1)', borderRadius: '8px' }}>
+                              <p style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: '#00B1A9', fontFamily: '"Museo Sans", "IBM Plex Sans", sans-serif' }}>
+                                {crit.Healthy}
+                              </p>
+                              <p style={{ fontSize: '11px', color: '#6b7280', margin: '2px 0 0' }}>Healthy</p>
+                            </div>
+                            <div style={{ flex: 1, textAlign: 'center', padding: '12px', background: 'rgba(253, 185, 36, 0.1)', borderRadius: '8px' }}>
+                              <p style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: '#FDB924', fontFamily: '"Museo Sans", "IBM Plex Sans", sans-serif' }}>
+                                {crit.Caution}
+                              </p>
+                              <p style={{ fontSize: '11px', color: '#6b7280', margin: '2px 0 0' }}>Caution</p>
+                            </div>
+                            <div style={{ flex: 1, textAlign: 'center', padding: '12px', background: 'rgba(227, 24, 55, 0.1)', borderRadius: '8px' }}>
+                              <p style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: '#E31837', fontFamily: '"Museo Sans", "IBM Plex Sans", sans-serif' }}>
+                                {crit.Warning}
+                              </p>
+                              <p style={{ fontSize: '11px', color: '#6b7280', margin: '2px 0 0' }}>Warning</p>
+                            </div>
+                          </div>
+
+                          <div style={{
+                            background: '#f9fafb',
+                            borderRadius: '8px',
+                            padding: '12px 16px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}>
+                            <span style={{ fontSize: '13px', color: '#6b7280' }}>Total Equipment</span>
+                            <span style={{ fontSize: '18px', fontWeight: 600, color: '#1f2937', fontFamily: '"Museo Sans", "IBM Plex Sans", sans-serif' }}>
+                              {crit.total}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               )}
 
