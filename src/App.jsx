@@ -38,6 +38,7 @@ export default function InstrumentHealthDashboard() {
   const [selectedArea, setSelectedArea] = useState('All');
   const [selectedEquipment, setSelectedEquipment] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
+  const [selectedCriticality, setSelectedCriticality] = useState('All');
   const [fileName, setFileName] = useState('');
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [viewMode, setViewMode] = useState('overview');
@@ -187,9 +188,10 @@ export default function InstrumentHealthDashboard() {
       if (selectedArea !== 'All' && item.area !== selectedArea) return false;
       if (selectedEquipment !== 'All' && item.equipmentType !== selectedEquipment) return false;
       if (selectedStatus !== 'All' && item.status !== selectedStatus) return false;
+      if (selectedCriticality !== 'All' && formatCriticality(item.criticality) !== selectedCriticality) return false;
       return true;
     });
-  }, [data, selectedArea, selectedEquipment, selectedStatus]);
+  }, [data, selectedArea, selectedEquipment, selectedStatus, selectedCriticality]);
 
   const equipmentTypes = useMemo(() => {
     if (!data) return [];
@@ -824,6 +826,13 @@ export default function InstrumentHealthDashboard() {
                   <option value="Healthy">Healthy</option>
                   <option value="Caution">Caution</option>
                   <option value="Warning">Warning</option>
+                </select>
+
+                <select value={selectedCriticality} onChange={(e) => setSelectedCriticality(e.target.value)}>
+                  <option value="All">All Criticality</option>
+                  <option value="C1">C1 - High</option>
+                  <option value="C2">C2 - Medium</option>
+                  <option value="C3">C3 - Low</option>
                 </select>
               </div>
               
